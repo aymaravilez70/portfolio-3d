@@ -1117,3 +1117,138 @@ kbd { display: inline-grid; min-width: 24px; height: 24px; place-items: center; 
   50% { opacity: 0.3; transform: scale(0.85); }
 }
 
+/* ==========================================================================
+   World Loading Overlay (Previene pantalla vacía y muestra progreso 3D real)
+   ========================================================================== */
+.world-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(32, 38, 28, 0.96) 0%, rgba(18, 22, 16, 0.99) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.5s;
+  pointer-events: auto;
+}
+
+.world-loading-overlay.is-fading {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.world-loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: min(390px, calc(100% - 36px));
+  padding: 34px 28px 30px;
+  background: #1c2117;
+  border: 1.5px solid #4a5438;
+  border-radius: 8px;
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(217, 255, 86, 0.12);
+}
+
+.world-loading-badge {
+  font: 700 10.5px var(--mono, monospace);
+  letter-spacing: 0.12em;
+  color: var(--lime, #d9ff56);
+  background: rgba(217, 255, 86, 0.1);
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(217, 255, 86, 0.28);
+  margin-bottom: 18px;
+}
+
+.world-loading-car {
+  position: relative;
+  width: 100%;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.world-loading-car .car-emoji {
+  font-size: 34px;
+  animation: carBounce 0.55s infinite alternate ease-in-out;
+  z-index: 2;
+}
+
+.world-loading-car .road-stripes {
+  position: absolute;
+  bottom: 6px;
+  width: 160px;
+  height: 2.5px;
+  background: repeating-linear-gradient(90deg, #d9ff56 0, #d9ff56 14px, transparent 14px, transparent 28px);
+  animation: roadScroll 0.45s infinite linear;
+}
+
+@keyframes carBounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-4px); }
+}
+
+@keyframes roadScroll {
+  from { transform: translateX(28px); }
+  to { transform: translateX(0); }
+}
+
+.world-loading-title {
+  color: #f7f5ec;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+
+.world-loading-desc {
+  color: #9ba38d;
+  font-size: 12.5px;
+  margin: 0 0 22px;
+  line-height: 1.45;
+}
+
+.world-loading-track {
+  width: 100%;
+  height: 8px;
+  background: #2b3322;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid #434e35;
+}
+
+.world-loading-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #818e53, #d9ff56);
+  border-radius: 999px;
+  transition: width 0.22s ease-out;
+  box-shadow: 0 0 12px rgba(217, 255, 86, 0.45);
+}
+
+.world-loading-footer {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  font: 700 11px var(--mono, monospace);
+}
+
+.world-loading-pct {
+  color: var(--lime, #d9ff56);
+  font-size: 12px;
+}
+
+.world-loading-status {
+  color: #848c77;
+  font-size: 10.5px;
+}
+
+

@@ -1,8 +1,8 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, RefObject } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
-import { Cloud, Clouds, Float, Html, Sky, Sparkles, useFBX, useGLTF } from '@react-three/drei'
-import { ACESFilmicToneMapping, AdditiveBlending, Box3, BufferGeometry, CanvasTexture, Color, DoubleSide, Group, InstancedMesh, Material, Matrix4, Mesh, MeshLambertMaterial, MeshStandardMaterial, Object3D, RepeatWrapping, SRGBColorSpace, TextureLoader, Vector3 } from 'three'
+import { Cloud, Clouds, Float, Html, Sky, Sparkles, useFBX, useGLTF, useProgress } from '@react-three/drei'
+import { ACESFilmicToneMapping, AdditiveBlending, Box3, BufferGeometry, CanvasTexture, Color, DoubleSide, FrontSide, Group, InstancedMesh, Material, Matrix4, Mesh, MeshLambertMaterial, MeshStandardMaterial, Object3D, RepeatWrapping, SRGBColorSpace, TextureLoader, Vector3 } from 'three'
 import { playBumpSound } from '../utils/audio'
 import DestructibleName, { type CarPhysicsState } from './DestructibleName'
 import DestructibleTrafficProps from './DestructibleTrafficProps'
@@ -894,7 +894,7 @@ function Car({
   )
 }
 
-function Trees() {
+function Trees({ isMobile }: { isMobile?: boolean }) {
   const fbx = useFBX('/models/trees/fantasy_trees.fbx')
   const diffuse = useLoader(TextureLoader, '/models/trees/DioR3.png')
   const alpha = useLoader(TextureLoader, '/models/trees/Alpha.jpg')
@@ -908,11 +908,11 @@ function Trees() {
       color: new Color('#ffffff'),
       transparent: true,
       alphaTest: 0.35,
-      side: DoubleSide,
+      side: isMobile ? FrontSide : DoubleSide,
       roughness: 0.68,
       metalness: 0.02,
     })
-  }, [diffuse, alpha])
+  }, [diffuse, alpha, isMobile])
 
   // Assemble the 5 distinct complete fantasy tree variants (trunk + foliage + twigs)
   const variants = useMemo(() => {
@@ -932,8 +932,8 @@ function Trees() {
           clone.rotation.set(-Math.PI / 2, 0, 0)
           clone.scale.set(1, 1, 1)
           clone.material = treeMaterial
-          clone.castShadow = true
-          clone.receiveShadow = true
+          clone.castShadow = !isMobile
+          clone.receiveShadow = false
           treeGroup.add(clone)
           foundParts++
         }
@@ -1075,7 +1075,7 @@ function UrbanDetails() {
   )
 }
 
-function PerimeterFences() {
+function PerimeterFences({ isMobile }: { isMobile?: boolean }) {
   const { scene } = useGLTF('/models/props/fence_simple.glb')
   const meshWoodRef = useRef<InstancedMesh>(null)
   const meshWoodDarkRef = useRef<InstancedMesh>(null)
@@ -1150,15 +1150,15 @@ function PerimeterFences() {
       <instancedMesh
         ref={meshWoodRef}
         args={[woodGeo, woodMat, matrices.length]}
-        castShadow
-        receiveShadow
+        castShadow={!isMobile}
+        receiveShadow={false}
         frustumCulled={false}
       />
       <instancedMesh
         ref={meshWoodDarkRef}
         args={[woodDarkGeo, woodDarkMat, matrices.length]}
-        castShadow
-        receiveShadow
+        castShadow={!isMobile}
+        receiveShadow={false}
         frustumCulled={false}
       />
     </group>
@@ -1419,7 +1419,64 @@ function MobileJoystick({ controlState, paused }: { controlState: RefObject<Cont
   )
 }
 
+function WorldLoadingOverlay() {
+  const { active, progress } = useProgress()
+  const [done, setDone] = useState(false)
+  const [removed, setRemoved] = useState(false)
+
+  useEffect(() => {
+    if (!active && progress >= 100) {
+      const t1 = setTimeout(() => setDone(true), 350)
+      const t2 = setTimeout(() => setRemoved(true), 850)
+      return () => {
+        clearTimeout(t1)
+        clearTimeout(t2)
+      }
+    }
+  }, [active, progress])
+
+  if (removed) return null
+
+  const displayPct = Math.min(100, Math.max(0, Math.round(progress)))
+
+  return (
+    <div className={`world-loading-overlay ${done ? 'is-fading' : ''}`}>
+      <div className="world-loading-card">
+        <div className="world-loading-badge">AYMAR AVILÉS · CIUDAD 3D</div>
+        <div className="world-loading-car">
+          <span className="car-emoji">🚗</span>
+          <span className="road-stripes" />
+        </div>
+        <div className="world-loading-title">Cargando Ciudad Virtual</div>
+        <p className="world-loading-desc">Preparando modelos 3D, texturas y físicas...</p>
+        <div className="world-loading-track">
+          <div className="world-loading-fill" style={{ width: `${displayPct}%` }} />
+        </div>
+        <div className="world-loading-footer">
+          <span className="world-loading-pct">{displayPct}%</span>
+          <span className="world-loading-status">
+            {displayPct >= 100 ? '¡Listo! Arrancando motor...' : 'Optimizando texturas...'}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function World({ onArrive, onOpen, paused, collectedStars = [], onCollectStar, onSelectProject }: OpenWorldProps) {
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768
+  })
+
+  useEffect(() => {
+    const check = () => {
+      setIsMobile(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768)
+    }
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
   const grassTexture = useMemo(() => createGrassTexture(), [])
   const controlState = useRef<Controls>({ forward: false, back: false, left: false, right: false, throttle: 0, steering: 0 })
   const carPhysicsState = useRef<CarPhysicsState>({ x: 0, z: 3, vx: 0, vz: 0, speed: 0, rotation: 0 })
@@ -1647,10 +1704,11 @@ function World({ onArrive, onOpen, paused, collectedStars = [], onCollectStar, o
       onPointerCancel={endLook}
       onContextMenu={(event) => event.preventDefault()}
     >
+      <WorldLoadingOverlay />
       <Canvas
         shadows
-        dpr={[1, 1.75]}
-        camera={{ position: [0, 3.2, 10.5], fov: 44, near: 0.5, far: 180 }}
+        dpr={isMobile ? [1, 1.15] : [1, 1.5]}
+        camera={{ position: [0, 3.2, 10.5], fov: 44, near: 0.5, far: 380 }}
         gl={{
           antialias: true,
           toneMapping: ACESFilmicToneMapping,
@@ -1659,11 +1717,11 @@ function World({ onArrive, onOpen, paused, collectedStars = [], onCollectStar, o
         }}
       >
         {/* Realistic Sky, Fog & Lighting Atmosphere */}
-        <color attach="background" args={['#649ed8']} />
-        <fog attach="fog" args={['#7ab0e6', 42, 94]} />
+        <color attach="background" args={['#7ab0e6']} />
+        <fog attach="fog" args={['#7ab0e6', 55, 140]} />
 
         <Sky
-          distance={450000}
+          distance={350}
           sunPosition={[-18, 28, 16]}
           inclination={0.48}
           azimuth={0.22}
@@ -1683,7 +1741,7 @@ function World({ onArrive, onOpen, paused, collectedStars = [], onCollectStar, o
           intensity={3.4}
           color="#fff6e8"
           castShadow
-          shadow-mapSize={[2048, 2048]}
+          shadow-mapSize={isMobile ? [1024, 1024] : [2048, 2048]}
           shadow-camera-left={-28}
           shadow-camera-right={28}
           shadow-camera-top={28}
@@ -1692,12 +1750,14 @@ function World({ onArrive, onOpen, paused, collectedStars = [], onCollectStar, o
           shadow-normalBias={0.025}
         />
 
-        {/* Floating 3D Clouds with sunlight scattering */}
-        <Clouds material={MeshLambertMaterial}>
-          <Cloud seed={2} scale={1.8} volume={4.5} segments={8} bounds={[14, 2, 14]} speed={0.12} opacity={0.75} color="#ffffff" position={[-15, 16, -10]} />
-          <Cloud seed={5} scale={2.2} volume={5.5} segments={8} bounds={[16, 2, 16]} speed={0.10} opacity={0.65} color="#ffffff" position={[16, 18, 12]} />
-          <Cloud seed={8} scale={1.7} volume={4.2} segments={7} bounds={[12, 2, 12]} speed={0.14} opacity={0.70} color="#f7faff" position={[-6, 19, 16]} />
-        </Clouds>
+        {/* Floating 3D Clouds with sunlight scattering (disabled on mobile for peak performance) */}
+        {!isMobile && (
+          <Clouds material={MeshLambertMaterial}>
+            <Cloud seed={2} scale={1.8} volume={4.5} segments={8} bounds={[14, 2, 14]} speed={0.12} opacity={0.75} color="#ffffff" position={[-15, 16, -10]} />
+            <Cloud seed={5} scale={2.2} volume={5.5} segments={8} bounds={[16, 2, 16]} speed={0.10} opacity={0.65} color="#ffffff" position={[16, 18, 12]} />
+            <Cloud seed={8} scale={1.7} volume={4.2} segments={7} bounds={[12, 2, 12]} speed={0.14} opacity={0.70} color="#f7faff" position={[-6, 19, 16]} />
+          </Clouds>
+        )}
 
         {/* Enhanced Natural Ground Surface with organic lawn texture */}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
@@ -1718,11 +1778,11 @@ function World({ onArrive, onOpen, paused, collectedStars = [], onCollectStar, o
         </mesh>
 
         <Suspense fallback={null}>
-          <PerimeterFences />
+          <PerimeterFences isMobile={isMobile} />
           <RoadNetwork />
           <Neighborhood />
           <UrbanDetails />
-          <Trees />
+          <Trees isMobile={isMobile} />
 
           {/* Option A: Glowing vertical beacons over the 4 destinations */}
           {destinations.map((destination) => (
