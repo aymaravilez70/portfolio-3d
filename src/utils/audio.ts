@@ -188,3 +188,27 @@ export function playLetterRebuildSound() {
   })
 }
 
+/**
+ * Play a solid mechanical click/door thud when entering or exiting the vehicle.
+ */
+export function playVehicleDoorSound(isEntering: boolean) {
+  const ctx = getAudioContext()
+  if (!ctx) return
+
+  const now = ctx.currentTime
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+
+  osc.type = isEntering ? 'triangle' : 'sine'
+  osc.frequency.setValueAtTime(isEntering ? 180 : 260, now)
+  osc.frequency.exponentialRampToValueAtTime(isEntering ? 80 : 120, now + 0.12)
+
+  gain.gain.setValueAtTime(0.24, now)
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13)
+
+  osc.connect(gain)
+  gain.connect(ctx.destination)
+
+  osc.start(now)
+  osc.stop(now + 0.14)
+}

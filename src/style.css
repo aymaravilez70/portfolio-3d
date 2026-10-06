@@ -1253,4 +1253,118 @@ kbd { display: inline-grid; min-width: 24px; height: 24px; place-items: center; 
   font-size: 10.5px;
 }
 
+/* ==========================================================================
+   Vehicle Enter/Exit Action Prompts & Mobile Action Button
+   ========================================================================== */
+.vehicle-action-hud {
+  position: absolute;
+  z-index: 6;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.vehicle-action-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(28, 33, 23, 0.92);
+  border: 1.5px solid #4a5438;
+  border-radius: 999px;
+  color: #e5e7eb;
+  font: 700 12px var(--mono, monospace);
+  letter-spacing: 0.05em;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  user-select: none;
+}
+
+.vehicle-action-chip:hover {
+  transform: translateY(-2px);
+  background: #23291d;
+  border-color: #d9ff56;
+  color: #d9ff56;
+}
+
+.vehicle-action-chip kbd {
+  background: #11140e;
+  border: 1px solid #586343;
+  color: #d9ff56;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font: 800 11.5px var(--mono, monospace);
+}
+
+.vehicle-action-chip.is-enter {
+  background: rgba(33, 44, 21, 0.95);
+  border-color: #d9ff56;
+  color: #f4ffbe;
+  animation: pulseEnterPrompt 1.6s infinite alternate ease-in-out;
+}
+
+@keyframes pulseEnterPrompt {
+  0% { transform: scale(1); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45); }
+  100% { transform: scale(1.05); box-shadow: 0 10px 28px rgba(217, 255, 86, 0.35); }
+}
+
+.mobile-vehicle-toggle-wrap {
+  position: absolute;
+  z-index: 7;
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-vehicle-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: #1c2117;
+  border: 1.5px solid #4a5438;
+  border-radius: 999px;
+  color: #f3f4f6;
+  font: 800 11px var(--mono, monospace);
+  letter-spacing: 0.05em;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s, background 0.12s, border-color 0.12s;
+}
+
+.mobile-vehicle-toggle-btn:active {
+  transform: scale(0.94);
+}
+
+.mobile-vehicle-toggle-btn .toggle-icon {
+  font-size: 16px;
+}
+
+.mobile-vehicle-toggle-btn.enter-active {
+  background: #253319;
+  border-color: #d9ff56;
+  color: #d9ff56;
+  box-shadow: 0 0 16px rgba(217, 255, 86, 0.35);
+  animation: pulseEnterPrompt 1.4s infinite alternate ease-in-out;
+}
+
+@media (max-width: 600px) {
+  .vehicle-action-hud {
+    display: none; /* Mobile users use the on-screen toggle button */
+  }
+}
+
+
 

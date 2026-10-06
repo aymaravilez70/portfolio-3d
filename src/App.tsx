@@ -685,9 +685,9 @@ export default function App() {
           <div className="world-overlay world-overlay-bottom">
             <div className="drive-hint">
               <Car size={16} />
-              <span>MANTÉN PARA CONDUCIR</span>
+              <span>CONDUCIR O CAMINAR</span>
               <i>W A S D</i>
-              <i>↑ ↓ ← →</i>
+              <i>F: SALIR/ENTRAR</i>
             </div>
             <div className="map-help">
               <Compass size={16} />
@@ -704,8 +704,9 @@ export default function App() {
               <X size={16} />
             </button>
             <b>Controles y Mini-Juego</b>
-            <p><kbd>W</kbd>/<kbd>↑</kbd> acelera progresivamente al mantener pulsado; <kbd>S</kbd>/<kbd>↓</kbd> frena o pone reversa.</p>
-            <p><kbd>A</kbd>/<kbd>←</kbd> y <kbd>D</kbd>/<kbd>→</kbd> giran el volante con agarre adaptativo.</p>
+            <p><kbd>W</kbd>/<kbd>↑</kbd> acelera o camina; <kbd>S</kbd>/<kbd>↓</kbd> frena/retrocede.</p>
+            <p><kbd>A</kbd>/<kbd>←</kbd> y <kbd>D</kbd>/<kbd>→</kbd> giran el volante o dirigen el personaje.</p>
+            <p><kbd>F</kbd> <b>Bajar del auto o Subir al auto</b> para caminar libremente por la ciudad a pie.</p>
             <p><b>Zoom de Cámara:</b> Rueda del ratón, pellizco táctil o botones <b>+</b> / <b>−</b>.</p>
             <p><b>Monumento Aymar Aviles:</b> Choca las letras gigantes para tumbarlas y pulsa <kbd>E</kbd> para restaurarlas.</p>
             <p><b>Mini-Juego:</b> Recorre las calles para recolectar las <b>8 estrellas doradas</b> repartidas por el circuito.</p>

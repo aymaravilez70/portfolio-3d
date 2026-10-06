@@ -3,10 +3,11 @@ import type { PointerEvent as ReactPointerEvent, RefObject } from 'react'
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import { Cloud, Clouds, Float, Html, Sky, Sparkles, useFBX, useGLTF, useProgress } from '@react-three/drei'
 import { ACESFilmicToneMapping, AdditiveBlending, Box3, BufferGeometry, CanvasTexture, Color, DoubleSide, FrontSide, Group, InstancedMesh, Material, Matrix4, Mesh, MeshLambertMaterial, MeshStandardMaterial, Object3D, RepeatWrapping, SRGBColorSpace, TextureLoader, Vector3 } from 'three'
-import { playBumpSound } from '../utils/audio'
+import { playBumpSound, playVehicleDoorSound } from '../utils/audio'
 import DestructibleName, { type CarPhysicsState } from './DestructibleName'
 import DestructibleTrafficProps from './DestructibleTrafficProps'
 import GarageShowroom from './GarageShowroom'
+import PlayerCharacter, { type CharacterPhysicsState } from './PlayerCharacter'
 
 function createGrassTexture() {
   if (typeof document === 'undefined') return null
@@ -432,6 +433,7 @@ function Car({
   controlState,
   cameraOrbit,
   paused,
+  isDriving = true,
   collectedStars = [],
   onCollectStar,
   carPhysicsState,
@@ -440,6 +442,7 @@ function Car({
   controlState: RefObject<Controls>
   cameraOrbit: RefObject<CameraOrbitState>
   paused: boolean
+  isDriving?: boolean
   collectedStars?: number[]
   onCollectStar?: (id: number) => void
   carPhysicsState?: RefObject<CarPhysicsState>
@@ -610,17 +613,14 @@ function Car({
 
   useFrame((state, delta) => {
     if (!car.current) return
-    if (paused) {
+    if (paused || !isDriving) {
       velocity.current = 0
       throttleHoldTime.current = 0
       reverseHoldTime.current = 0
-      if (controlState.current) {
-        controlState.current.forward = false
-        controlState.current.back = false
-        controlState.current.left = false
-        controlState.current.right = false
-        controlState.current.throttle = 0
-        controlState.current.steering = 0
+      if (!isDriving && carPhysicsState?.current) {
+        carPhysicsState.current.vx = 0
+        carPhysicsState.current.vz = 0
+        carPhysicsState.current.speed = 0
       }
       return
     }
@@ -805,9 +805,11 @@ function Car({
       effRadius * Math.sin(effElevation),
       Math.cos(cameraYaw) * effRadius * Math.cos(effElevation)
     )
-    const target = new Vector3(car.current.position.x, 0, car.current.position.z).add(behind)
-    camera.position.lerp(target, 1 - Math.pow(0.001, dt))
-    camera.lookAt(car.current.position.x, targetLookY, car.current.position.z)
+    if (isDriving) {
+      const targetCam = car.current.position.clone().add(behind)
+      camera.position.lerp(targetCam, 1 - Math.pow(0.001, dt))
+      camera.lookAt(car.current.position.x, targetLookY, car.current.position.z)
+    }
 
     // Check Destination Proximity
     const nearest = destinations
@@ -1221,7 +1223,19 @@ function Location({
   )
 }
 
-function MobileJoystick({ controlState, paused }: { controlState: RefObject<Controls>; paused: boolean }) {
+function MobileJoystick({
+  controlState,
+  paused,
+  isDriving = true,
+  canEnterVehicle = false,
+  onToggleVehicle,
+}: {
+  controlState: RefObject<Controls>
+  paused: boolean
+  isDriving?: boolean
+  canEnterVehicle?: boolean
+  onToggleVehicle?: () => void
+}) {
   const [knobPos, setKnobPos] = useState({ x: 0, y: 0 })
   const [active, setActive] = useState(false)
   const [braking, setBraking] = useState(false)
@@ -1373,7 +1387,7 @@ function MobileJoystick({ controlState, paused }: { controlState: RefObject<Cont
         onPointerUp={handlePointerEnd}
         onPointerCancel={handlePointerEnd}
         onLostPointerCapture={handlePointerEnd}
-        aria-label="Palanca de mando para conducir"
+        aria-label={isDriving ? 'Palanca de mando para conducir' : 'Palanca de mando para caminar'}
         role="region"
       >
         <div className="joystick-base" ref={baseRef}>
@@ -1394,27 +1408,59 @@ function MobileJoystick({ controlState, paused }: { controlState: RefObject<Cont
             <div className="knob-core" />
           </div>
         </div>
-        <span className="joystick-hint">CONDUCIR</span>
+        <span className="joystick-hint">{isDriving ? 'CONDUCIR' : 'CAMINAR'}</span>
       </div>
 
-      <div className="mobile-brake-wrap" aria-label="Pedal de freno y marcha atrás">
-        <button
-          type="button"
-          className={`mobile-brake-btn${braking ? ' is-active' : ''}`}
-          onPointerDown={handleBrakeDown}
-          onPointerUp={handleBrakeEnd}
-          onPointerCancel={handleBrakeEnd}
-          onLostPointerCapture={handleBrakeEnd}
-          title="Freno y marcha atrás"
-          aria-label="Frenar o dar marcha atrás"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 5v14M19 12l-7 7-7-7" />
-          </svg>
-          <span>FRENO</span>
-        </button>
-        <span className="mobile-brake-hint">REVERSA</span>
-      </div>
+      {/* When driving: show brake/reverse pedal. When walking: show enter vehicle action or sprint */}
+      {isDriving ? (
+        <div className="mobile-brake-wrap" aria-label="Pedal de freno y marcha atrás">
+          <button
+            type="button"
+            className={`mobile-brake-btn${braking ? ' is-active' : ''}`}
+            onPointerDown={handleBrakeDown}
+            onPointerUp={handleBrakeEnd}
+            onPointerCancel={handleBrakeEnd}
+            onLostPointerCapture={handleBrakeEnd}
+            title="Freno y marcha atrás"
+            aria-label="Frenar o dar marcha atrás"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M19 12l-7 7-7-7" />
+            </svg>
+            <span>FRENO</span>
+          </button>
+          <span className="mobile-brake-hint">REVERSA</span>
+        </div>
+      ) : null}
+
+      {/* Mobile action button: exit car when driving, or enter car when near */}
+      {onToggleVehicle && (isDriving || canEnterVehicle) && (
+        <div className="mobile-vehicle-toggle-wrap">
+          <button
+            type="button"
+            className={`mobile-vehicle-toggle-btn ${!isDriving ? 'enter-active' : ''}`}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onToggleVehicle()
+            }}
+            title={isDriving ? 'Bajar del auto y caminar a pie' : 'Subir al auto'}
+            aria-label={isDriving ? 'Bajar del auto' : 'Subir al auto'}
+          >
+            {isDriving ? (
+              <>
+                <span className="toggle-icon">🚶</span>
+                <span>BAJARSE</span>
+              </>
+            ) : (
+              <>
+                <span className="toggle-icon">🚗</span>
+                <span>SUBIR AL AUTO</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </>
   )
 }
@@ -1480,6 +1526,12 @@ function World({ onArrive, onOpen, paused, collectedStars = [], onCollectStar, o
   const grassTexture = useMemo(() => createGrassTexture(), [])
   const controlState = useRef<Controls>({ forward: false, back: false, left: false, right: false, throttle: 0, steering: 0 })
   const carPhysicsState = useRef<CarPhysicsState>({ x: 0, z: 3, vx: 0, vz: 0, speed: 0, rotation: 0 })
+  const characterPhysicsState = useRef<CharacterPhysicsState>({ x: 0, z: 0, rotation: 0, isWalking: false, speed: 0 })
+
+  const [isDriving, setIsDriving] = useState(true)
+  const [canEnterVehicle, setCanEnterVehicle] = useState(false)
+  const [characterSpawn, setCharacterSpawn] = useState({ x: -1.6, z: 3, rotation: 0 })
+
   const cameraOrbit = useRef<CameraOrbitState>({
     yaw: 0,
     elevation: 0.4,
@@ -1493,6 +1545,55 @@ function World({ onArrive, onOpen, paused, collectedStars = [], onCollectStar, o
   const containerRef = useRef<HTMLDivElement>(null)
   const [looking, setLooking] = useState(false)
   const releaseTimers = useRef<Partial<Record<DigitalControl, number>>>({})
+
+  const toggleDriving = useCallback(() => {
+    if (paused) return
+    if (isDriving) {
+      // Exit car: calculate driver door position on the left side of the car
+      const carX = carPhysicsState.current.x
+      const carZ = carPhysicsState.current.z
+      const carRot = carPhysicsState.current.rotation
+
+      // ~1.65m to the driver's side of the car
+      const exitX = carX - Math.cos(carRot) * 1.65
+      const exitZ = carZ + Math.sin(carRot) * 1.65
+
+      setCharacterSpawn({ x: exitX, z: exitZ, rotation: carRot })
+      setIsDriving(false)
+      playVehicleDoorSound(false)
+
+      if (controlState.current) {
+        controlState.current.forward = false
+        controlState.current.back = false
+        controlState.current.left = false
+        controlState.current.right = false
+        controlState.current.throttle = 0
+        controlState.current.steering = 0
+      }
+    } else {
+      // Enter car if close enough
+      const carX = carPhysicsState.current.x
+      const carZ = carPhysicsState.current.z
+      const charX = characterPhysicsState.current.x
+      const charZ = characterPhysicsState.current.z
+      const dist = Math.hypot(charX - carX, charZ - carZ)
+
+      if (dist <= 3.4) {
+        setIsDriving(true)
+        setCanEnterVehicle(false)
+        playVehicleDoorSound(true)
+
+        if (controlState.current) {
+          controlState.current.forward = false
+          controlState.current.back = false
+          controlState.current.left = false
+          controlState.current.right = false
+          controlState.current.throttle = 0
+          controlState.current.steering = 0
+        }
+      }
+    }
+  }, [isDriving, paused])
 
   const controls = useCallback(
     (key: DigitalControl, down: boolean) => {
@@ -1546,6 +1647,12 @@ function World({ onArrive, onOpen, paused, collectedStars = [], onCollectStar, o
     const getControl = (e: KeyboardEvent) => codeMap[e.code] || keyMap[e.key]
 
     const down = (event: KeyboardEvent) => {
+      if (event.code === 'KeyF' || event.key === 'f' || event.key === 'F') {
+        event.preventDefault()
+        toggleDriving()
+        return
+      }
+
       const control = getControl(event)
       if (control && !paused) {
         event.preventDefault()
@@ -1579,7 +1686,7 @@ function World({ onArrive, onOpen, paused, collectedStars = [], onCollectStar, o
       window.removeEventListener('blur', blur)
       ;(Object.keys(releaseTimers.current) as DigitalControl[]).forEach((name) => cancelRelease(name))
     }
-  }, [cancelRelease, coastRelease, controls, paused])
+  }, [cancelRelease, coastRelease, controls, paused, toggleDriving])
 
   // Wheel zoom handler with smooth boundary clamping
   useEffect(() => {
@@ -1803,30 +1910,81 @@ function World({ onArrive, onOpen, paused, collectedStars = [], onCollectStar, o
           {/* Señales de tránsito y semáforos destructibles que se quedan tumbados */}
           <DestructibleTrafficProps carPhysics={carPhysicsState} />
 
+          {/* Player Character (walk on foot when !isDriving) */}
+          <PlayerCharacter
+            active={!isDriving}
+            spawnPos={characterSpawn}
+            controlState={controlState}
+            cameraOrbit={cameraOrbit}
+            physicsState={characterPhysicsState}
+            carPos={{ x: carPhysicsState.current.x, z: carPhysicsState.current.z }}
+            onEnterVehiclePrompt={(can) => setCanEnterVehicle(can)}
+          />
+
           {/* Player Car with synchronized physics, solid obstacle collisions and collectible hit check */}
           <Car
             onArrive={onArrive}
             controlState={controlState}
             cameraOrbit={cameraOrbit}
             paused={paused}
+            isDriving={isDriving}
             collectedStars={collectedStars}
             onCollectStar={onCollectStar}
             carPhysicsState={carPhysicsState}
           />
         </Suspense>
       </Canvas>
+
+      {/* On-screen Keyboard / Action hint for entering/exiting vehicle */}
+      {!paused && (
+        <div className="vehicle-action-hud">
+          {isDriving ? (
+            <button
+              type="button"
+              className="vehicle-action-chip"
+              onClick={toggleDriving}
+              title="Bajar del auto (Tecla F)"
+            >
+              <kbd>F</kbd>
+              <span>BAJAR DEL AUTO</span>
+            </button>
+          ) : (
+            canEnterVehicle && (
+              <button
+                type="button"
+                className="vehicle-action-chip is-enter"
+                onClick={toggleDriving}
+                title="Subir al auto (Tecla F)"
+              >
+                <kbd>F</kbd>
+                <span>SUBIR AL AUTO 🚗</span>
+              </button>
+            )
+          )}
+        </div>
+      )}
+
       <div className="world-zoom-widget" aria-label="Controles de zoom">
         <button type="button" onClick={handleZoomIn} title="Acercar cámara" aria-label="Acercar cámara">+</button>
         <span />
         <button type="button" onClick={handleZoomOut} title="Alejar cámara" aria-label="Alejar cámara">−</button>
       </div>
-      {!paused && <MobileJoystick controlState={controlState} paused={paused} />}
+      {!paused && (
+        <MobileJoystick
+          controlState={controlState}
+          paused={paused}
+          isDriving={isDriving}
+          canEnterVehicle={canEnterVehicle}
+          onToggleVehicle={toggleDriving}
+        />
+      )}
     </div>
   )
 }
 
 useGLTF.preload('/models/props/fence_simple.glb')
 useGLTF.preload('/models/car-kit/car-new.glb')
+useFBX.preload('/sport_w_01_warmup.fbx')
 useFBX.preload('/models/trees/fantasy_trees.fbx')
 
 export default function OpenWorld(props: OpenWorldProps) {
