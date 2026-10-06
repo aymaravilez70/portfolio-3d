@@ -511,12 +511,12 @@ function Car({
               if ('metalness' in m) m.metalness = 0.1
               taillights.push(m)
             } else if (name === 'Translucent_Glass_Blue' || lower.includes('glass') || lower.includes('window')) {
-              // High-spec crystal automotive glass
+              // Crystal clear automotive glass so driver is visible inside
               m.transparent = true
-              m.opacity = 0.52
-              if ('color' in m) m.color = new Color('#2d4457')
-              if ('roughness' in m) m.roughness = 0.04
-              if ('metalness' in m) m.metalness = 0.22
+              m.opacity = 0.28
+              if ('color' in m) m.color = new Color('#a8cce4')
+              if ('roughness' in m) m.roughness = 0.05
+              if ('metalness' in m) m.metalness = 0.15
             } else if (name === 'grill') {
               if ('roughness' in m) m.roughness = 0.35
               if ('metalness' in m) m.metalness = 0.65
@@ -1984,7 +1984,7 @@ function World({ onArrive, onOpen, paused, collectedStars = [], onCollectStar, o
 
 useGLTF.preload('/models/props/fence_simple.glb')
 useGLTF.preload('/models/car-kit/car-new.glb')
-useFBX.preload('/sport_w_01_warmup.fbx')
+useGLTF.preload('/models/character.glb')
 useFBX.preload('/models/trees/fantasy_trees.fbx')
 
 export default function OpenWorld(props: OpenWorldProps) {

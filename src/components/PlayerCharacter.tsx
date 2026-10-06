@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import type { RefObject } from 'react'
 import { Group, Mesh, Vector3 } from 'three'
 import { useFrame } from '@react-three/fiber'
-import { useFBX } from '@react-three/drei'
+import { useGLTF, useAnimations } from '@react-three/drei'
 import { resolveCarCollisions } from './OpenWorld'
 
 export interface CharacterPhysicsState {
@@ -35,27 +35,23 @@ export default function PlayerCharacter({
   const groupRef = useRef<Group>(null)
   const pos = useRef(new Vector3(spawnPos.x, 0, spawnPos.z))
   const rotation = useRef(spawnPos.rotation)
-  const animTime = useRef(0)
+  const currentAction = useRef<string>('idle')
 
-  // Load the character model
-  const rawFbx = useFBX('/sport_w_01_warmup.fbx')
+  // Load animated GLTF character model with skeletal clips (idle, walk, run)
+  const { scene, animations } = useGLTF('/models/character.glb')
+  const { actions } = useAnimations(animations, groupRef)
 
-  // Clone and optimize character model
-  const characterModel = useMemo(() => {
-    const clone = rawFbx.clone(true)
-    // Scale character to realistic human height (~1.72m)
-    // Sport model is in cm (100 units = 1m) or standard units
-    clone.scale.set(0.0165, 0.0165, 0.0165)
-    clone.traverse((child) => {
+  // Configure shadows and materials on the character mesh
+  useMemo(() => {
+    scene.traverse((child) => {
       if (child instanceof Mesh) {
         child.castShadow = true
         child.receiveShadow = false
       }
     })
-    return clone
-  }, [rawFbx])
+  }, [scene])
 
-  // Sync position on toggle
+  // Sync position on vehicle exit
   useEffect(() => {
     if (active) {
       pos.current.set(spawnPos.x, 0, spawnPos.z)
@@ -64,15 +60,22 @@ export default function PlayerCharacter({
         groupRef.current.position.set(spawnPos.x, 0, spawnPos.z)
         groupRef.current.rotation.y = spawnPos.rotation
       }
+      // Start with idle animation
+      if (actions.idle) {
+        actions.idle.reset().fadeIn(0.2).play()
+        currentAction.current = 'idle'
+      }
+    } else {
+      // Fade out all actions when entering car
+      Object.values(actions).forEach((act) => act?.fadeOut(0.2))
     }
-  }, [active, spawnPos])
+  }, [active, spawnPos, actions])
 
   useFrame((state, delta) => {
     if (!groupRef.current) return
     const dt = Math.min(delta, 0.05)
 
     if (!active) {
-      // Invisible/hidden when driving inside car
       groupRef.current.visible = false
       return
     }
@@ -96,7 +99,7 @@ export default function PlayerCharacter({
     // Camera relative movement
     const orbit = cameraOrbit.current
     const camYaw = orbit.yaw
-    const moveSpeed = 4.2 // Human walking/jogging speed: 4.2 m/s
+    const moveSpeed = 3.8 // Realistic walking speed: 3.8 m/s (~13.7 km/h)
 
     const isMoving = Math.abs(inputX) > 0.05 || Math.abs(inputY) > 0.05
     let currentSpeed = 0
@@ -122,13 +125,26 @@ export default function PlayerCharacter({
       const collision = resolveCarCollisions(targetX, targetZ)
       pos.current.x = collision.x
       pos.current.z = collision.z
-
-      animTime.current += dt * (currentSpeed * 2.5)
     }
 
-    // Natural subtle breathing bobbing or walking bounce
-    const bob = isMoving ? Math.sin(animTime.current * 4) * 0.04 : Math.sin(state.clock.getElapsedTime() * 2) * 0.008
-    groupRef.current.position.set(pos.current.x, bob, pos.current.z)
+    // Play smooth walking vs idle skeletal animations
+    const targetAction = isMoving ? 'walk' : 'idle'
+    if (currentAction.current !== targetAction) {
+      const prev = actions[currentAction.current]
+      const next = actions[targetAction]
+      if (prev && next) {
+        prev.fadeOut(0.25)
+        next.reset().fadeIn(0.25).play()
+        currentAction.current = targetAction
+      }
+    }
+
+    // Scale walk animation playback speed to movement speed
+    if (actions.walk && isMoving) {
+      actions.walk.timeScale = 1.15
+    }
+
+    groupRef.current.position.set(pos.current.x, 0, pos.current.z)
     groupRef.current.rotation.y = rotation.current
 
     // Update physics state ref
@@ -140,19 +156,19 @@ export default function PlayerCharacter({
       physicsState.current.speed = currentSpeed
     }
 
-    // Camera follows player when on foot
+    // Third-person camera follow
     orbit.radius += (orbit.targetRadius - orbit.radius) * Math.min(1, dt * 10)
-    const effRadius = Math.max(3.5, Math.min(8.0, orbit.radius * 0.58))
+    const effRadius = Math.max(3.2, Math.min(7.0, orbit.radius * 0.52))
     const effElevation = Math.max(0.22, orbit.elevation * 0.9)
 
     const behind = new Vector3(
       Math.sin(camYaw) * effRadius * Math.cos(effElevation),
-      effRadius * Math.sin(effElevation) + 1.2,
+      effRadius * Math.sin(effElevation) + 1.15,
       Math.cos(camYaw) * effRadius * Math.cos(effElevation)
     )
     const targetCam = new Vector3(pos.current.x, 0, pos.current.z).add(behind)
     state.camera.position.lerp(targetCam, 1 - Math.pow(0.001, dt))
-    state.camera.lookAt(pos.current.x, 1.25, pos.current.z)
+    state.camera.lookAt(pos.current.x, 1.1, pos.current.z)
 
     // Check distance to car for "Enter Car" prompt
     const distToCar = Math.hypot(pos.current.x - carPos.x, pos.current.z - carPos.z)
@@ -163,7 +179,10 @@ export default function PlayerCharacter({
 
   return (
     <group ref={groupRef}>
-      <primitive object={characterModel} />
+      {/* Scaled to human proportion (~1.65m height matching car scale 0.48) */}
+      <primitive object={scene} scale={0.92} />
     </group>
   )
 }
+
+useGLTF.preload('/models/character.glb')
