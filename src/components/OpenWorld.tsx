@@ -460,16 +460,6 @@ function Car({
 
   // Load and memoize cloned new car model instance with articulated wheel pivots
   const { scene: rawCarScene } = useGLTF('/models/car-kit/car-new.glb')
-  const { scene: rawCharScene } = useGLTF('/models/character.glb')
-  const driverModel = useMemo(() => {
-    const clone = rawCharScene.clone(true)
-    clone.traverse((child) => {
-      if (child instanceof Mesh) {
-        child.castShadow = true
-      }
-    })
-    return clone
-  }, [rawCharScene])
   const { carModel, wheelGroups } = useMemo(() => {
     const instance = rawCarScene.clone(true)
     const taillights: any[] = []
@@ -901,13 +891,6 @@ function Car({
             dispose={null}
           />
         </group>
-
-        {/* Visible 3D Driver Character inside the car cabin when driving */}
-        {isDriving && (
-          <group position={[-0.28, 0.08, 0.08]} rotation={[0, Math.PI, 0]} scale={0.58}>
-            <primitive object={driverModel} />
-          </group>
-        )}
       </group>
     </group>
   )

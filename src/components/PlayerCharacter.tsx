@@ -60,9 +60,9 @@ export default function PlayerCharacter({
         groupRef.current.position.set(spawnPos.x, 0, spawnPos.z)
         groupRef.current.rotation.y = spawnPos.rotation
       }
-      // Start with idle animation
+      // Start with idle animation immediately
       if (actions.idle) {
-        actions.idle.reset().fadeIn(0.2).play()
+        actions.idle.reset().fadeIn(0.15).play()
         currentAction.current = 'idle'
       }
     } else {
@@ -75,6 +75,7 @@ export default function PlayerCharacter({
     if (!groupRef.current) return
     const dt = Math.min(delta, 0.05)
 
+    // Hidden when inside car
     if (!active) {
       groupRef.current.visible = false
       return
@@ -106,10 +107,10 @@ export default function PlayerCharacter({
 
     if (isMoving) {
       // Direction relative to camera:
-      // When inputY > 0 (W/forward), move in the direction camera is looking (-sin(camYaw), -cos(camYaw))
-      // When inputY < 0 (S/back), move backwards towards the camera (+sin(camYaw), +cos(camYaw))
-      // When inputX > 0 (D/right), move to the right (+cos(camYaw), -sin(camYaw))
-      // When inputX < 0 (A/left), move to the left (-cos(camYaw), +sin(camYaw))
+      // When inputY > 0 (W / Forward): moves straight away from the camera looking direction
+      // When inputY < 0 (S / Backward): moves toward the camera
+      // When inputX > 0 (D / Right): moves to the camera's right
+      // When inputX < 0 (A / Left): moves to the camera's left
       const forwardX = -Math.sin(camYaw)
       const forwardZ = -Math.cos(camYaw)
       const rightX = Math.cos(camYaw)
@@ -123,9 +124,10 @@ export default function PlayerCharacter({
         moveDirZ /= mag
       }
 
-      // Smooth rotate character towards target moving direction
-      // Target rotation angle in Three.js coordinates (facing towards -Z at angle 0)
-      const targetAngle = Math.atan2(moveDirX, moveDirZ) + Math.PI
+      // Exact facing angle:
+      // The 3D model in Three.js faces towards +Z by default.
+      // To face the movement vector (moveDirX, moveDirZ), the yaw angle is Math.atan2(moveDirX, moveDirZ).
+      const targetAngle = Math.atan2(moveDirX, moveDirZ)
       const diff = targetAngle - rotation.current
       const normDiff = Math.atan2(Math.sin(diff), Math.cos(diff))
       rotation.current += normDiff * Math.min(1, dt * 14)
@@ -149,9 +151,18 @@ export default function PlayerCharacter({
       const prev = actions[currentAction.current]
       const next = actions[targetAction]
       if (prev && next) {
-        prev.fadeOut(0.25)
-        next.reset().fadeIn(0.25).play()
+        prev.fadeOut(0.2)
+        next.reset().fadeIn(0.2).play()
         currentAction.current = targetAction
+      } else if (next) {
+        next.reset().fadeIn(0.2).play()
+        currentAction.current = targetAction
+      }
+    } else {
+      // Ensure the active animation is currently playing (prevents T-pose if action was paused/not started)
+      const current = actions[currentAction.current]
+      if (current && !current.isRunning()) {
+        current.play()
       }
     }
 
@@ -194,9 +205,9 @@ export default function PlayerCharacter({
   })
 
   return (
-    <group ref={groupRef}>
-      {/* Scaled to human proportion (~1.30m matching vehicle scale 0.48) */}
-      <primitive object={scene} scale={0.72} />
+    <group ref={groupRef} visible={active}>
+      {/* Scaled to human proportion (~1.08m matching vehicle scale 0.48) */}
+      <primitive object={scene} scale={0.60} />
     </group>
   )
 }
