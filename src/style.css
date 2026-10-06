@@ -94,7 +94,8 @@ kbd { display: inline-grid; min-width: 24px; height: 24px; place-items: center; 
 .sign-work { --sign-color: #d9ff56; }.sign-about { --sign-color: #eda774; }.sign-skills { --sign-color: #93afdf; }.sign-contact { --sign-color: #cfadcf; }
 .world-sign small, .world-sign span { color: #575c4e; font: 700 11.5px var(--mono); letter-spacing: .06em; }
 .world-sign b { color: #1c2016; font: 800 16px var(--mono); letter-spacing: -.02em; }
-.place-panel { position: absolute; z-index: 8; top: 18px; right: 18px; bottom: 18px; display: flex; width: min(890px, calc(100% - 36px)); flex-direction: column; overflow: hidden; border: 1.5px solid #acaa9c; background: var(--paper); box-shadow: 6px 6px 0 #373c3052; }
+.place-panel { position: absolute; z-index: 8; top: 18px; right: 18px; bottom: 18px; display: flex; width: min(890px, calc(100% - 36px)); flex-direction: column; overflow: hidden; border: 1.5px solid #acaa9c; background: var(--paper); box-shadow: 6px 6px 0 #373c3052; animation: panelSlideIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes panelSlideIn { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: translateX(0); } }
 .panel-heading { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; padding: 18px 24px 15px; border-bottom: 1.5px solid #cfccbf; }
 .panel-heading div { display: grid; gap: 4px; }
 .panel-heading span { color: #626759; font: 700 12px var(--mono); letter-spacing: .08em; }
@@ -112,7 +113,8 @@ kbd { display: inline-grid; min-width: 24px; height: 24px; place-items: center; 
 .work-list > button svg { grid-column: 3; grid-row: 1 / span 2; opacity: 0; transition: opacity .15s, transform .15s; }
 .work-list > button:hover, .work-list > button.selected { padding-left: 8px; background: #e5e2d6; color: #1a1e16; }
 .work-list > button:hover svg, .work-list > button.selected svg { opacity: 1; transform: translateX(2px); }
-.case-content { min-width: 0; overflow: auto; }
+.case-content { min-width: 0; overflow: auto; animation: caseFadeIn 0.24s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes caseFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .work-preview { position: relative; min-height: 275px; margin: 18px 18px 0; overflow: hidden; border: 1.5px solid #3d4338; background: #e4e1d3; color: #252a23; }
 .browser-chrome { position: relative; z-index: 1; display: flex; height: 32px; align-items: center; gap: 6px; padding: 0 12px; border-bottom: 1px solid #c9c7b9; background: #efecdf; }
 .browser-chrome > span { width: 7px; height: 7px; border: 1px solid #898b7b; border-radius: 50%; }

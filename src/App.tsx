@@ -1,6 +1,5 @@
 import { Suspense, lazy, useCallback, useMemo, useState } from 'react'
 import { ArrowDownRight, ArrowLeft, ArrowUpRight, Car, Compass, Keyboard, List, Star, Trophy, X } from '@phosphor-icons/react'
-import { AnimatePresence, motion } from 'motion/react'
 import type { CSSProperties } from 'react'
 import { projects } from './data/projects'
 import type { OrbitProject } from './data/projects'
@@ -52,12 +51,9 @@ function WorkPreview({ project }: { project: OrbitProject }) {
 
 function ProjectCase({ project }: { project: OrbitProject }) {
   return (
-    <motion.article
+    <article
       className="case-content"
       key={project.id}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24 }}
     >
       <WorkPreview project={project} />
       <div className="case-copy">
@@ -76,7 +72,7 @@ function ProjectCase({ project }: { project: OrbitProject }) {
           <small>Desarrollado y construido por Aymar Avilés Ronquillo.</small>
         </div>
       </div>
-    </motion.article>
+    </article>
   )
 }
 
@@ -716,36 +712,30 @@ export default function App() {
             <p>Sigue los <b>haces de luz de colores</b> en el cielo para localizar los 4 destinos principales.</p>
           </aside>
         )}
-        <AnimatePresence>
-          {place && (
-            <motion.aside
-              className="place-panel"
-              key="place-panel"
-              initial={{ opacity: 0, x: 26 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 26 }}
-              transition={{ duration: 0.28 }}
-              aria-label={placeNames[place]}
-            >
-              <div className="panel-heading">
-                <div>
-                  <span>PARADA / {['work', 'about', 'skills', 'contact'].indexOf(place) + 1} DE 4</span>
-                  <h2>{placeNames[place]}</h2>
-                </div>
-                <button type="button" onClick={() => setPlace(null)} aria-label="Cerrar parada">
-                  <X size={20} />
-                </button>
+        {place && (
+          <aside
+            className="place-panel"
+            key="place-panel"
+            aria-label={placeNames[place]}
+          >
+            <div className="panel-heading">
+              <div>
+                <span>PARADA / {['work', 'about', 'skills', 'contact'].indexOf(place) + 1} DE 4</span>
+                <h2>{placeNames[place]}</h2>
               </div>
-              <PlaceContent place={place} activeProject={activeProject} onSelectProject={setActiveProjectId} />
-              <div className="panel-footer">
-                <span>AYMAR AVILÉS · PORTAFOLIO PROFESIONAL</span>
-                <button type="button" onClick={() => setPlace(null)}>
-                  <ArrowLeft size={15} /> VOLVER AL MUNDO
-                </button>
-              </div>
-            </motion.aside>
-          )}
-        </AnimatePresence>
+              <button type="button" onClick={() => setPlace(null)} aria-label="Cerrar parada">
+                <X size={20} />
+              </button>
+            </div>
+            <PlaceContent place={place} activeProject={activeProject} onSelectProject={setActiveProjectId} />
+            <div className="panel-footer">
+              <span>AYMAR AVILÉS · PORTAFOLIO PROFESIONAL</span>
+              <button type="button" onClick={() => setPlace(null)}>
+                <ArrowLeft size={15} /> VOLVER AL MUNDO
+              </button>
+            </div>
+          </aside>
+        )}
       </section>
       <footer className="world-footer">
         <span>AYMAR AVILÉS RONQUILLO · PORTAFOLIO INTERACTIVO 3D</span>
