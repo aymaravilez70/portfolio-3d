@@ -99,24 +99,40 @@ export default function PlayerCharacter({
     // Camera relative movement
     const orbit = cameraOrbit.current
     const camYaw = orbit.yaw
-    const moveSpeed = 3.8 // Realistic walking speed: 3.8 m/s (~13.7 km/h)
+    const moveSpeed = 3.6 // Realistic walking speed: 3.6 m/s (~13 km/h)
 
     const isMoving = Math.abs(inputX) > 0.05 || Math.abs(inputY) > 0.05
     let currentSpeed = 0
 
     if (isMoving) {
-      // Direction in camera space
-      const moveAngle = Math.atan2(inputX, inputY)
-      const worldMoveAngle = camYaw + moveAngle
+      // Direction relative to camera:
+      // When inputY > 0 (W/forward), move in the direction camera is looking (-sin(camYaw), -cos(camYaw))
+      // When inputY < 0 (S/back), move backwards towards the camera (+sin(camYaw), +cos(camYaw))
+      // When inputX > 0 (D/right), move to the right (+cos(camYaw), -sin(camYaw))
+      // When inputX < 0 (A/left), move to the left (-cos(camYaw), +sin(camYaw))
+      const forwardX = -Math.sin(camYaw)
+      const forwardZ = -Math.cos(camYaw)
+      const rightX = Math.cos(camYaw)
+      const rightZ = -Math.sin(camYaw)
 
-      // Smooth rotate character towards walking direction
-      const diff = worldMoveAngle - rotation.current
+      let moveDirX = forwardX * inputY + rightX * inputX
+      let moveDirZ = forwardZ * inputY + rightZ * inputX
+      const mag = Math.hypot(moveDirX, moveDirZ)
+      if (mag > 0.001) {
+        moveDirX /= mag
+        moveDirZ /= mag
+      }
+
+      // Smooth rotate character towards target moving direction
+      // Target rotation angle in Three.js coordinates (facing towards -Z at angle 0)
+      const targetAngle = Math.atan2(moveDirX, moveDirZ) + Math.PI
+      const diff = targetAngle - rotation.current
       const normDiff = Math.atan2(Math.sin(diff), Math.cos(diff))
       rotation.current += normDiff * Math.min(1, dt * 14)
 
-      currentSpeed = moveSpeed * Math.hypot(inputX, inputY)
-      const vx = Math.sin(worldMoveAngle) * currentSpeed
-      const vz = Math.cos(worldMoveAngle) * currentSpeed
+      currentSpeed = moveSpeed * Math.min(1, Math.hypot(inputX, inputY))
+      const vx = moveDirX * currentSpeed
+      const vz = moveDirZ * currentSpeed
 
       const targetX = pos.current.x + vx * dt
       const targetZ = pos.current.z + vz * dt
@@ -158,17 +174,17 @@ export default function PlayerCharacter({
 
     // Third-person camera follow
     orbit.radius += (orbit.targetRadius - orbit.radius) * Math.min(1, dt * 10)
-    const effRadius = Math.max(3.2, Math.min(7.0, orbit.radius * 0.52))
+    const effRadius = Math.max(3.0, Math.min(6.5, orbit.radius * 0.48))
     const effElevation = Math.max(0.22, orbit.elevation * 0.9)
 
     const behind = new Vector3(
       Math.sin(camYaw) * effRadius * Math.cos(effElevation),
-      effRadius * Math.sin(effElevation) + 1.15,
+      effRadius * Math.sin(effElevation) + 1.05,
       Math.cos(camYaw) * effRadius * Math.cos(effElevation)
     )
     const targetCam = new Vector3(pos.current.x, 0, pos.current.z).add(behind)
     state.camera.position.lerp(targetCam, 1 - Math.pow(0.001, dt))
-    state.camera.lookAt(pos.current.x, 1.1, pos.current.z)
+    state.camera.lookAt(pos.current.x, 0.95, pos.current.z)
 
     // Check distance to car for "Enter Car" prompt
     const distToCar = Math.hypot(pos.current.x - carPos.x, pos.current.z - carPos.z)
@@ -179,8 +195,8 @@ export default function PlayerCharacter({
 
   return (
     <group ref={groupRef}>
-      {/* Scaled to human proportion (~1.65m height matching car scale 0.48) */}
-      <primitive object={scene} scale={0.92} />
+      {/* Scaled to human proportion (~1.30m matching vehicle scale 0.48) */}
+      <primitive object={scene} scale={0.72} />
     </group>
   )
 }
